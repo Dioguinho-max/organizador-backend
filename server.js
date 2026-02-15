@@ -286,14 +286,14 @@ app.get("/ranking", (req, res) => {
 app.get("/teste-ia", async (req, res) => {
     try {
         const response = await axios.post(
-            "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.2",
             {
                 inputs: `<s>[INST] Você é um tutor especialista em estudos.
 Crie um plano simples para estudar matemática para iniciantes. [/INST]`
             },
             {
                 headers: {
-                    Authorization: `Bearer ${HF_TOKEN}`,
+                    Authorization: `Bearer ${process.env.HF_TOKEN}`,
                     "Content-Type": "application/json"
                 }
             }
@@ -308,7 +308,6 @@ Crie um plano simples para estudar matemática para iniciantes. [/INST]`
         res.status(500).json({ erro: "Erro na IA" });
     }
 });
-
 
 // ===============================
 const PORT = process.env.PORT || 3000;
