@@ -286,10 +286,9 @@ app.get("/ranking", (req, res) => {
 app.get("/teste-ia", async (req, res) => {
     try {
         const response = await axios.post(
-            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.2",
+            "https://router.huggingface.co/hf-inference/models/google/gemma-2b-it",
             {
-                inputs: `<s>[INST] Você é um tutor especialista em estudos.
-Crie um plano simples para estudar matemática para iniciantes. [/INST]`
+                inputs: "Você é um tutor especialista em estudos. Crie um plano simples para estudar matemática para iniciantes."
             },
             {
                 headers: {
@@ -299,15 +298,23 @@ Crie um plano simples para estudar matemática para iniciantes. [/INST]`
             }
         );
 
-        res.json({
-            resposta: response.data[0].generated_text
-        });
+        console.log(response.data);
+
+        const texto =
+            response.data?.[0]?.generated_text ||
+            response.data?.generated_text ||
+            "Sem resposta";
+
+        res.json({ resposta: texto });
 
     } catch (error) {
         console.error("Erro Hugging Face:", error.response?.data || error.message);
-        res.status(500).json({ erro: "Erro na IA" });
+        res.status(500).json({
+            erro: error.response?.data || error.message
+        });
     }
 });
+
 
 // ===============================
 const PORT = process.env.PORT || 3000;
