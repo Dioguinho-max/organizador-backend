@@ -3,16 +3,16 @@ const sqlite3 = require("sqlite3").verbose();
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const OpenAI = require("openai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 const SECRET = "vt34554rgfedfnr3vfb3ehdsshufdsbhfbc4386=#$*%$667VFTC%$^%G^(Dv698879064cjabvc";
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const db = new sqlite3.Database("./database.db");
 
@@ -284,28 +284,23 @@ app.get("/ranking", (req, res) => {
 
 
 // ===============================
-// TESTE IA
+// TESTE GEMINI
 // ===============================
 app.get("/teste-ia", async (req, res) => {
     try {
-        const resposta = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                { role: "system", content: "Você é um tutor especialista em estudos." },
-                { role: "user", content: "Crie um plano simples para estudar matemática para iniciantes." }
-            ]
-        });
+        const result = await model.generateContent(
+            "Crie um plano simples para estudar matemática para iniciantes."
+        );
 
-        res.json({
-            resposta: resposta.choices[0].message.content
-        });
+        const response = result.response.text();
+
+        res.json({ resposta: response });
 
     } catch (erro) {
-        console.error("Erro OpenAI:", erro);
+        console.error("Erro Gemini:", erro);
         res.status(500).json({ erro: "Erro na IA" });
     }
 });
-
 
 
 // ===============================
