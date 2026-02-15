@@ -12,8 +12,7 @@ app.use(cors());
 const SECRET = "vt34554rgfedfnr3vfb3ehdsshufdsbhfbc4386=#$*%$667VFTC%$^%G^(Dv698879064cjabvc";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
 const db = new sqlite3.Database("./database.db");
 
 
