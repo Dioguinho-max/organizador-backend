@@ -23,12 +23,13 @@ const pool = new Pool({
 // ===============================
 async function criarTabelas() {
     await pool.query(`
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE,
-            password TEXT
-        );
-    `);
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE,
+        password TEXT,
+        is_admin BOOLEAN DEFAULT FALSE
+    );
+`);
 
     await pool.query(`
         CREATE TABLE IF NOT EXISTS tarefas (
@@ -245,24 +246,38 @@ app.get("/ranking", async (req, res) => {
 //================================
 // LIMITE IA
 // ===============================
+//================================
+// LIMITE IA
+// ===============================
 app.post("/gerar-plano", autenticar, async (req, res) => {
     const { materia, nivel, horas } = req.body;
 
-    const result = await pool.query(
-        `SELECT COUNT(*) as total 
-         FROM historico_ia 
-         WHERE user_id = $1 
-         AND DATE(data) = CURRENT_DATE`,
-        [req.userId]
-    );
-
-    if (Number(result.rows[0].total) >= 3) {
-        return res.status(403).json({
-            erro: "Limite diário de 3 gerações atingido"
-        });
-    }
-
     try {
+        // Verificar se o usuário é admin
+        const userResult = await pool.query(
+            "SELECT is_admin FROM users WHERE id = $1",
+            [req.userId]
+        );
+        const isAdmin = userResult.rows[0]?.is_admin;
+
+        // Se não for admin, checar limite diário
+        if (!isAdmin) {
+            const countResult = await pool.query(
+                `SELECT COUNT(*) as total
+                 FROM historico_ia
+                 WHERE user_id = $1
+                 AND DATE(data) = CURRENT_DATE`,
+                [req.userId]
+            );
+
+            if (countResult.rows[0].total >= 3) {
+                return res.status(403).json({
+                    erro: "Limite diário de 3 gerações atingido"
+                });
+            }
+        }
+
+        // Chamada à IA
         const response = await axios.post(
             "https://router.huggingface.co/v1/chat/completions",
             {
@@ -270,7 +285,12 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
                 messages: [
                     {
                         role: "system",
-                        content: "Você é um tutor humano, motivador e direto."
+                        content: `
+Você é um tutor humano, motivador e direto.
+Responda com plano organizado em tópicos curtos.
+Sem links externos.
+Linguagem simples e prática.
+`
                     },
                     {
                         role: "user",
@@ -288,6 +308,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
 
         const texto = response.data.choices[0].message.content;
 
+        // Salvar histórico
         await pool.query(
             "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES ($1, $2, $3)",
             [req.userId, `Plano para ${materia}`, texto]
@@ -296,6 +317,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         res.json({ plano: texto });
 
     } catch (error) {
+        console.error(error.response?.data || error.message);
         res.status(500).json({ erro: "Erro ao gerar plano" });
     }
 });
