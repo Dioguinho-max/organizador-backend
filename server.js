@@ -1,5 +1,5 @@
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
+const { Pool } = require("pg");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -9,47 +9,52 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const SECRET = "vt34554rgfedfnr3vfb3ehdsshufdsbhfbc4386=#$*%$667VFTC%$^%G^(Dv698879064cjabvc";
+const SECRET = process.env.JWT_SECRET;
 const HF_TOKEN = process.env.HF_TOKEN;
-const db = new sqlite3.Database("./database.db");
-
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
 // ===============================
 // CRIAÇÃO DAS TABELAS
 // ===============================
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT
-    )`);
-    
-    db.run(`CREATE TABLE IF NOT EXISTS tarefas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    titulo TEXT NOT NULL,
-    descricao TEXT,
-    nota REAL,
-    concluida INTEGER DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-)`);
+async function criarTabelas() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT
+        );
+    `);
 
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS tarefas (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
+            titulo TEXT NOT NULL,
+            descricao TEXT,
+            nota REAL,
+            concluida INTEGER DEFAULT 0
+        );
+    `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS notas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        valor REAL
-    )`);
-});
-db.run(`CREATE TABLE IF NOT EXISTS historico_ia (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    pergunta TEXT,
-    resposta TEXT,
-    data DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-)`);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS historico_ia (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
+            pergunta TEXT,
+            resposta TEXT,
+            data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
 
+    console.log("Tabelas criadas 🚀");
+}
+
+criarTabelas();
 
 // ===============================
 // MIDDLEWARE JWT
@@ -78,101 +83,76 @@ function autenticar(req, res, next) {
 app.post("/register", async (req, res) => {
     const { username, password } = req.body;
 
-    if (!username || !username.trim())
-        return res.status(400).json({ erro: "Username obrigatório" });
-
-    if (!password || password.length < 4)
-        return res.status(400).json({ erro: "Senha muito curta" });
+    if (!username || !password)
+        return res.status(400).json({ erro: "Dados inválidos" });
 
     const hash = await bcrypt.hash(password, 10);
 
-    db.run(
-        "INSERT INTO users (username, password) VALUES (?, ?)",
-        [username, hash],
-        function (err) {
-            if (err)
-                return res.status(400).json({ erro: "Usuário já existe" });
+    try {
+        await pool.query(
+            "INSERT INTO users (username, password) VALUES ($1, $2)",
+            [username, hash]
+        );
 
-            res.json({ mensagem: "Usuário criado com sucesso" });
-        }
-    );
+        res.json({ mensagem: "Usuário criado com sucesso" });
+
+    } catch (err) {
+        res.status(400).json({ erro: "Usuário já existe" });
+    }
 });
 
 
 // ===============================
 // LOGIN
 // ===============================
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
     const { username, password } = req.body;
 
-    db.get(
-        "SELECT * FROM users WHERE username = ?",
-        [username],
-        async (err, user) => {
-            if (!user)
-                return res.status(400).json({ erro: "Usuário não encontrado" });
-
-            const senhaValida = await bcrypt.compare(password, user.password);
-            if (!senhaValida)
-                return res.status(400).json({ erro: "Senha incorreta" });
-
-            const token = jwt.sign(
-                { id: user.id },
-                SECRET,
-                { expiresIn: "1h" }
-            );
-
-            res.json({ mensagem: "Login realizado", token });
-        }
+    const result = await pool.query(
+        "SELECT * FROM users WHERE username = $1",
+        [username]
     );
+
+    const user = result.rows[0];
+
+    if (!user)
+        return res.status(400).json({ erro: "Usuário não encontrado" });
+
+    const senhaValida = await bcrypt.compare(password, user.password);
+
+    if (!senhaValida)
+        return res.status(400).json({ erro: "Senha incorreta" });
+
+    const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: "1h" });
+
+    res.json({ token });
 });
 
 
 // ===============================
 // CRIAR TAREFA
 // ===============================
-app.post("/tarefas", autenticar, (req, res) => {
+app.post("/tarefas", autenticar, async (req, res) => {
     const { titulo, descricao, nota } = req.body;
 
-    if (!titulo || !titulo.trim()) {
-        return res.status(400).json({ erro: "Título obrigatório" });
-    }
-
-    const notaTratada =
-        nota !== undefined && nota !== ""
-            ? Number(nota)
-            : null;
-
-    db.run(
-        "INSERT INTO tarefas (user_id, titulo, descricao, nota) VALUES (?, ?, ?, ?)",
-        [req.userId, titulo, descricao || "", notaTratada],
-        function (err) {
-            if (err) {
-                console.log("ERRO SQL:", err);
-                return res.status(400).json({ erro: "Erro ao criar tarefa" });
-            }
-
-            res.json({ mensagem: "Tarefa criada com sucesso" });
-        }
+    await pool.query(
+        "INSERT INTO tarefas (user_id, titulo, descricao, nota) VALUES ($1, $2, $3, $4)",
+        [req.userId, titulo, descricao || "", nota || null]
     );
-});
 
+    res.json({ mensagem: "Tarefa criada" });
+});
 // ===============================
 // LISTAR TAREFAS
 // ===============================
-app.get("/tarefas", autenticar, (req, res) => {
-    db.all(
-        "SELECT * FROM tarefas WHERE user_id = ? ORDER BY id DESC",
-        [req.userId],
-        (err, rows) => {
-            if (err)
-                return res.status(400).json({ erro: "Erro ao buscar tarefas" });
-
-            res.json(rows);
-        }
+app.get("/tarefas", autenticar, async (req, res) => {
+    const result = await pool.query(
+        "SELECT * FROM tarefas WHERE user_id = $1 ORDER BY id DESC",
+        [req.userId]
     );
-});
 
+    res.json(result.rows);
+});
 
 // ===============================
 // ATUALIZAR TAREFA
@@ -219,20 +199,16 @@ app.put("/tarefas/:id", autenticar, (req, res) => {
 // ===============================
 // EXCLUIR TAREFA
 // ===============================
-app.delete("/tarefas/:id", autenticar, (req, res) => {
-    db.run(
-        "DELETE FROM tarefas WHERE id = ? AND user_id = ?",
-        [req.params.id, req.userId],
-        function (err) {
-            if (err)
-                return res.status(400).json({ erro: "Erro ao excluir tarefa" });
-
-            if (this.changes === 0)
-                return res.status(404).json({ erro: "Tarefa não encontrada" });
-
-            res.json({ mensagem: "Tarefa excluída com sucesso" });
-        }
+app.delete("/tarefas/:id", autenticar, async (req, res) => {
+    const result = await pool.query(
+        "DELETE FROM tarefas WHERE id = $1 AND user_id = $2",
+        [req.params.id, req.userId]
     );
+
+    if (result.rowCount === 0)
+        return res.status(404).json({ erro: "Tarefa não encontrada" });
+
+    res.json({ mensagem: "Tarefa excluída" });
 });
 
 
