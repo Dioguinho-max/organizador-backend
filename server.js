@@ -286,9 +286,19 @@ app.get("/ranking", (req, res) => {
 app.get("/teste-ia", async (req, res) => {
     try {
         const response = await axios.post(
-            "https://router.huggingface.co/hf-inference/models/google/gemma-2b-it",
+            "https://router.huggingface.co/v1/chat/completions",
             {
-                inputs: "Você é um tutor especialista em estudos. Crie um plano simples para estudar matemática para iniciantes."
+                model: "mistralai/Mistral-7B-Instruct-v0.2",
+                messages: [
+                    {
+                        role: "system",
+                        content: "Você é um tutor especialista em estudos."
+                    },
+                    {
+                        role: "user",
+                        content: "Crie um plano simples para estudar matemática para iniciantes."
+                    }
+                ]
             },
             {
                 headers: {
@@ -298,14 +308,9 @@ app.get("/teste-ia", async (req, res) => {
             }
         );
 
-        console.log(response.data);
-
-        const texto =
-            response.data?.[0]?.generated_text ||
-            response.data?.generated_text ||
-            "Sem resposta";
-
-        res.json({ resposta: texto });
+        res.json({
+            resposta: response.data.choices[0].message.content
+        });
 
     } catch (error) {
         console.error("Erro Hugging Face:", error.response?.data || error.message);
@@ -314,7 +319,6 @@ app.get("/teste-ia", async (req, res) => {
         });
     }
 });
-
 
 // ===============================
 const PORT = process.env.PORT || 3000;
