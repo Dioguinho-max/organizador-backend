@@ -157,43 +157,34 @@ app.get("/tarefas", autenticar, async (req, res) => {
 // ===============================
 // ATUALIZAR TAREFA
 // ===============================
-app.put("/tarefas/:id", autenticar, (req, res) => {
+app.put("/tarefas/:id", autenticar, async (req, res) => {
     const { titulo, descricao, nota, concluida } = req.body;
 
-    db.get(
-        "SELECT * FROM tarefas WHERE id = ? AND user_id = ?",
-        [req.params.id, req.userId],
-        (err, tarefa) => {
-
-            if (!tarefa)
-                return res.status(404).json({ erro: "Tarefa não encontrada" });
-
-            const novoTitulo = titulo !== undefined ? titulo : tarefa.titulo;
-            const novaDescricao = descricao !== undefined ? descricao : tarefa.descricao;
-            const novaNota = nota !== undefined ? nota : tarefa.nota;
-            const novoStatus = concluida !== undefined ? (concluida ? 1 : 0) : tarefa.concluida;
-
-            db.run(
-                `UPDATE tarefas 
-                 SET titulo = ?, descricao = ?, nota = ?, concluida = ?
-                 WHERE id = ? AND user_id = ?`,
-                [
-                    novoTitulo,
-                    novaDescricao,
-                    novaNota,
-                    novoStatus,
-                    req.params.id,
-                    req.userId
-                ],
-                function (err) {
-                    if (err)
-                        return res.status(400).json({ erro: "Erro ao atualizar tarefa" });
-
-                    res.json({ mensagem: "Tarefa atualizada com sucesso" });
-                }
-            );
-        }
+    const result = await pool.query(
+        "SELECT * FROM tarefas WHERE id = $1 AND user_id = $2",
+        [req.params.id, req.userId]
     );
+
+    const tarefa = result.rows[0];
+
+    if (!tarefa)
+        return res.status(404).json({ erro: "Tarefa não encontrada" });
+
+    await pool.query(
+        `UPDATE tarefas 
+         SET titulo = $1, descricao = $2, nota = $3, concluida = $4
+         WHERE id = $5 AND user_id = $6`,
+        [
+            titulo ?? tarefa.titulo,
+            descricao ?? tarefa.descricao,
+            nota ?? tarefa.nota,
+            concluida !== undefined ? (concluida ? 1 : 0) : tarefa.concluida,
+            req.params.id,
+            req.userId
+        ]
+    );
+
+    res.json({ mensagem: "Tarefa atualizada com sucesso" });
 });
 
 // ===============================
@@ -215,56 +206,41 @@ app.delete("/tarefas/:id", autenticar, async (req, res) => {
 // ===============================
 // STATS
 // ===============================
-app.get("/stats", autenticar, (req, res) => {
-    db.get(
+app.get("/stats", autenticar, async (req, res) => {
+    const result = await pool.query(
         `SELECT 
             COUNT(*) as total,
-            SUM(concluida) as concluidas
+            COALESCE(SUM(concluida),0) as concluidas
          FROM tarefas
-         WHERE user_id = ?`,
-        [req.userId],
-        (err, row) => {
-            if (err)
-                return res.status(400).json({ erro: "Erro ao buscar stats" });
-
-            res.json({
-                total: row.total || 0,
-                concluidas: row.concluidas || 0
-            });
-        }
+         WHERE user_id = $1`,
+        [req.userId]
     );
-});
 
+    res.json(result.rows[0]);
+});
 
 // ===============================
 // RANKING
 // ===============================
-app.get("/ranking", (req, res) => {
-    db.all(
-        `SELECT 
+app.get("/ranking", async (req, res) => {
+    const result = await pool.query(`
+        SELECT 
             users.username,
             COALESCE(AVG(tarefas.nota), 0) as media
-         FROM users
-         LEFT JOIN tarefas 
+        FROM users
+        LEFT JOIN tarefas 
             ON users.id = tarefas.user_id
-         GROUP BY users.id
-         ORDER BY media DESC`,
-        (err, rows) => {
-            if (err)
-                return res.status(400).json({ erro: "Erro ao gerar ranking" });
+        GROUP BY users.id
+        ORDER BY media DESC
+    `);
 
-            const rankingFormatado = rows.map(r => ({
-                username: r.username,
-                media: Number(r.media).toFixed(2)
-            }));
+    const rankingFormatado = result.rows.map(r => ({
+        username: r.username,
+        media: Number(r.media).toFixed(2)
+    }));
 
-            res.json(rankingFormatado);
-        }
-    );
+    res.json(rankingFormatado);
 });
-
-
-
 
 //================================
 // LIMITE IA
@@ -272,77 +248,68 @@ app.get("/ranking", (req, res) => {
 app.post("/gerar-plano", autenticar, async (req, res) => {
     const { materia, nivel, horas } = req.body;
 
-    db.get(
+    const result = await pool.query(
         `SELECT COUNT(*) as total 
          FROM historico_ia 
-         WHERE user_id = ? 
-         AND date(data) = date('now')`,
-        [req.userId],
-        async (err, row) => {
+         WHERE user_id = $1 
+         AND DATE(data) = CURRENT_DATE`,
+        [req.userId]
+    );
 
-            if (row.total >= 3) {
-                return res.status(403).json({
-                    erro: "Limite diário de 3 gerações atingido"
-                });
-            }
+    if (Number(result.rows[0].total) >= 3) {
+        return res.status(403).json({
+            erro: "Limite diário de 3 gerações atingido"
+        });
+    }
 
-            try {
-                const response = await axios.post(
-                    "https://router.huggingface.co/v1/chat/completions",
+    try {
+        const response = await axios.post(
+            "https://router.huggingface.co/v1/chat/completions",
+            {
+                model: "mistralai/Mistral-7B-Instruct-v0.2",
+                messages: [
                     {
-                        model: "mistralai/Mistral-7B-Instruct-v0.2",
-                        messages: [
-                            {
-                                role: "system",
-                                content: `
-Você é um tutor humano, motivador e direto.
-Responda com plano organizado em tópicos curtos.
-Sem links externos.
-Linguagem simples e prática.
-`
-                            },
-                            {
-                                role: "user",
-                                content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
-                            }
-                        ]
+                        role: "system",
+                        content: "Você é um tutor humano, motivador e direto."
                     },
                     {
-                        headers: {
-                            Authorization: `Bearer ${process.env.HF_TOKEN}`,
-                            "Content-Type": "application/json"
-                        }
+                        role: "user",
+                        content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
                     }
-                );
-
-                const texto = response.data.choices[0].message.content;
-
-                db.run(
-                    "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES (?, ?, ?)",
-                    [req.userId, `Plano para ${materia}`, texto]
-                );
-
-                res.json({ plano: texto });
-
-            } catch (error) {
-                console.error(error.response?.data || error.message);
-                res.status(500).json({ erro: "Erro ao gerar plano" });
+                ]
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.HF_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
             }
-        }
-    );
+        );
+
+        const texto = response.data.choices[0].message.content;
+
+        await pool.query(
+            "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES ($1, $2, $3)",
+            [req.userId, `Plano para ${materia}`, texto]
+        );
+
+        res.json({ plano: texto });
+
+    } catch (error) {
+        res.status(500).json({ erro: "Erro ao gerar plano" });
+    }
 });
 
 //===============================
 // HISTORICO IA
 //===============================
-app.get("/historico-ia", autenticar, (req, res) => {
-    db.all(
-        "SELECT * FROM historico_ia WHERE user_id = ? ORDER BY data DESC",
-        [req.userId],
-        (err, rows) => {
-            res.json(rows);
-        }
+app.get("/historico-ia", autenticar, async (req, res) => {
+    const result = await pool.query(
+        "SELECT * FROM historico_ia WHERE user_id = $1 ORDER BY data DESC",
+        [req.userId]
     );
+
+    res.json(result.rows);
 });
 
 //================================
