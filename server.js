@@ -41,6 +41,14 @@ db.serialize(() => {
         valor REAL
     )`);
 });
+db.run(`CREATE TABLE IF NOT EXISTS historico_ia (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    pergunta TEXT,
+    resposta TEXT,
+    data DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+)`);
 
 
 // ===============================
@@ -280,8 +288,89 @@ app.get("/ranking", (req, res) => {
 });
 
 
+
+
+//================================
+// LIMITE IA
 // ===============================
-// TESTE IA
+app.post("/gerar-plano", autenticar, async (req, res) => {
+    const { materia, nivel, horas } = req.body;
+
+    db.get(
+        `SELECT COUNT(*) as total 
+         FROM historico_ia 
+         WHERE user_id = ? 
+         AND date(data) = date('now')`,
+        [req.userId],
+        async (err, row) => {
+
+            if (row.total >= 3) {
+                return res.status(403).json({
+                    erro: "Limite diário de 3 gerações atingido"
+                });
+            }
+
+            try {
+                const response = await axios.post(
+                    "https://router.huggingface.co/v1/chat/completions",
+                    {
+                        model: "mistralai/Mistral-7B-Instruct-v0.2",
+                        messages: [
+                            {
+                                role: "system",
+                                content: `
+Você é um tutor humano, motivador e direto.
+Responda com plano organizado em tópicos curtos.
+Sem links externos.
+Linguagem simples e prática.
+`
+                            },
+                            {
+                                role: "user",
+                                content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
+                            }
+                        ]
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${process.env.HF_TOKEN}`,
+                            "Content-Type": "application/json"
+                        }
+                    }
+                );
+
+                const texto = response.data.choices[0].message.content;
+
+                db.run(
+                    "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES (?, ?, ?)",
+                    [req.userId, `Plano para ${materia}`, texto]
+                );
+
+                res.json({ plano: texto });
+
+            } catch (error) {
+                console.error(error.response?.data || error.message);
+                res.status(500).json({ erro: "Erro ao gerar plano" });
+            }
+        }
+    );
+});
+
+//===============================
+// HISTORICO IA
+//===============================
+app.get("/historico-ia", autenticar, (req, res) => {
+    db.all(
+        "SELECT * FROM historico_ia WHERE user_id = ? ORDER BY data DESC",
+        [req.userId],
+        (err, rows) => {
+            res.json(rows);
+        }
+    );
+});
+
+//================================
+// IA
 // ===============================
 app.get("/teste-ia", async (req, res) => {
     try {
