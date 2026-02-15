@@ -3,16 +3,14 @@ const sqlite3 = require("sqlite3").verbose();
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require("axios");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 const SECRET = "vt34554rgfedfnr3vfb3ehdsshufdsbhfbc4386=#$*%$667VFTC%$^%G^(Dv698879064cjabvc";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+const HF_TOKEN = process.env.HF_TOKEN;
 const db = new sqlite3.Database("./database.db");
 
 
@@ -283,20 +281,30 @@ app.get("/ranking", (req, res) => {
 
 
 // ===============================
-// TESTE GEMINI
+// TESTE IA
 // ===============================
 app.get("/teste-ia", async (req, res) => {
     try {
-        const result = await model.generateContent(
-            "Crie um plano simples para estudar matemática para iniciantes."
+        const response = await axios.post(
+            "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+            {
+                inputs: `<s>[INST] Você é um tutor especialista em estudos.
+Crie um plano simples para estudar matemática para iniciantes. [/INST]`
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${HF_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
+            }
         );
 
-        const response = result.response.text();
+        res.json({
+            resposta: response.data[0].generated_text
+        });
 
-        res.json({ resposta: response });
-
-    } catch (erro) {
-        console.error("Erro Gemini:", erro);
+    } catch (error) {
+        console.error("Erro Hugging Face:", error.response?.data || error.message);
         res.status(500).json({ erro: "Erro na IA" });
     }
 });
