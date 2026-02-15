@@ -3,12 +3,16 @@ const sqlite3 = require("sqlite3").verbose();
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const OpenAI = require("openai");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-const SECRET = "segredo_super_forte_123";
+const SECRET = "vt34554rgfedfnr3vfb3ehdsshufdsbhfbc4386=#$*%$667VFTC%$^%G^(Dv698879064cjabvc";
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
 
 const db = new sqlite3.Database("./database.db");
 
@@ -278,9 +282,34 @@ app.get("/ranking", (req, res) => {
     );
 });
 
+
+// ===============================
+// TESTE IA
+// ===============================
+app.get("/teste-ia", async (req, res) => {
+    try {
+        const resposta = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: "Você é um tutor especialista em estudos." },
+                { role: "user", content: "Crie um plano simples para estudar matemática para iniciantes." }
+            ]
+        });
+
+        res.json({
+            resposta: resposta.choices[0].message.content
+        });
+
+    } catch (erro) {
+        console.error("Erro OpenAI:", erro);
+        res.status(500).json({ erro: "Erro na IA" });
+    }
+});
+
+
+
 // ===============================
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
     console.log("Servidor rodando 🚀");
 });
