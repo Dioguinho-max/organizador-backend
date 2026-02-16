@@ -296,9 +296,13 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         }
 
         const response = await axios.post(
-    "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+    "https://router.huggingface.co/v1/chat/completions",
     {
-        inputs: `
+        model: "mistralai/Mistral-7B-Instruct-v0.2",
+        messages: [
+            {
+                role: "system",
+                content: `
 Você é um tutor didático e direto.
 
 Responda em duas partes:
@@ -313,24 +317,27 @@ Não use markdown.
 Não use símbolos decorativos.
 Texto simples.
 Máximo total: 20 linhas.
-
-Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.
-`,
-        parameters: {
-            max_new_tokens: 700,
-            temperature: 0.6
-        }
-    },
+`
+            },
             {
-                headers: {
-                    Authorization: `Bearer ${HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                }
+                role: "user",
+                content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
             }
-        );
+        ],
+        max_tokens: 700,
+        temperature: 0.6
+    },
+    {
+        headers: {
+            Authorization: `Bearer ${HF_TOKEN}`,
+            "Content-Type": "application/json"
+        }
+    }
+);
 
-        let texto = response.data[0].generated_text;
-        texto = limparTextoIA(texto);
+let texto = response.data.choices[0].message.content;
+texto = limparTextoIA(texto);
+
 
         await pool.query(
             "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES ($1, $2, $3)",
