@@ -286,13 +286,11 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
                     {
                         role: "system",
                         content: `
-Você é um tutor humano, direto e didático.
-Gere um plano de estudos LIMPO, sem markdown, sem emojis aleatórios, sem símbolos decorativos.
-Divida em:
-PARTE 1 - EXPLICAÇÃO (até 5 linhas)
-PARTE 2 - PLANO (20 linhas no máximo)
-Cada linha deve começar com Dia X:
-Use frases curtas e objetivas.
+Você é um tutor humano, motivador e direto.
+Responda com plano organizado em tópicos curtos.
+Sem links externos.
+Linguagem simples e prática.
+Gere um plano de estudos LIMPO, sem markdown, sem símbolos decorativos.
 `
                     },
                     {
