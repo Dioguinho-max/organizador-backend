@@ -298,7 +298,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         const response = await axios.post(
             "https://router.huggingface.co/v1/chat/completions",
             {
-                model: "mistralai/Mistral-7B-Instruct-v0.2",
+                model: "microsoft/Phi-3-mini-4k-instruct",
                 messages: [
                     {
                         role: "system",
