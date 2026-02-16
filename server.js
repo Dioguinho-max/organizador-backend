@@ -77,29 +77,6 @@ function autenticar(req, res, next) {
     });
 }
 
-//==================
-//limpar texto ia
-//==================
-function limparTextoIA(texto) {
-    texto = texto
-        .replace(/[*#`_~]/g, "")
-        .replace(/---/g, "")
-        .replace(/[•►–]/g, "")
-        .trim();
-
-    const emojiRegex = /([\u{1F300}-\u{1FAFF}])/gu;
-    const emojis = texto.match(emojiRegex);
-
-    if (emojis && emojis.length > 2) {
-        let count = 0;
-        texto = texto.replace(emojiRegex, (match) => {
-            count++;
-            return count <= 2 ? match : "";
-        });
-    }
-
-    return texto;
-}
 
 // ===============================
 // REGISTER
@@ -269,16 +246,21 @@ app.get("/ranking", async (req, res) => {
 //================================
 // LIMITE IA
 // ===============================
+//================================
+// LIMITE IA
+// ===============================
 app.post("/gerar-plano", autenticar, async (req, res) => {
     const { materia, nivel, horas } = req.body;
 
     try {
+        // Verificar se o usuário é admin
         const userResult = await pool.query(
             "SELECT is_admin FROM users WHERE id = $1",
             [req.userId]
         );
         const isAdmin = userResult.rows[0]?.is_admin;
 
+        // Se não for admin, checar limite diário
         if (!isAdmin) {
             const countResult = await pool.query(
                 `SELECT COUNT(*) as total
@@ -288,57 +270,45 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
                 [req.userId]
             );
 
-            if (parseInt(countResult.rows[0].total) >= 3) {
+            if (countResult.rows[0].total >= 3) {
                 return res.status(403).json({
                     erro: "Limite diário de 3 gerações atingido"
                 });
             }
         }
 
+        // Chamada à IA
         const response = await axios.post(
-    "https://router.huggingface.co/v1/chat/completions",
-    {
-        model: "microsoft/Phi-3-mini-4k-instruct",
-        messages: [
+            "https://router.huggingface.co/v1/chat/completions",
             {
-                role: "system",
-                content: `
-Você é um tutor didático e direto.
-
-Responda em duas partes:
-
-PARTE 1 - EXPLICAÇÃO:
-Explique em até 8 linhas por que esse plano funciona.
-
-PARTE 2 - PLANO:
-Liste tarefas simples.
-Cada linha deve começar com Dia X:
-Não use markdown.
-Não use símbolos decorativos.
-Texto simples.
-Máximo total: 20 linhas.
+                model: "mistralai/Mistral-7B-Instruct-v0.2",
+                messages: [
+                    {
+                        role: "system",
+                        content: `
+Você é um tutor humano, motivador e direto.
+Responda com plano organizado em tópicos curtos.
+Sem links externos.
+Linguagem simples e prática.
 `
+                    },
+                    {
+                        role: "user",
+                        content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
+                    }
+                ]
             },
             {
-                role: "user",
-                content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
+                headers: {
+                    Authorization: `Bearer ${process.env.HF_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
             }
-        ],
-        max_tokens: 700,
-        temperature: 0.6
-    },
-    {
-        headers: {
-            Authorization: `Bearer ${HF_TOKEN}`,
-            "Content-Type": "application/json"
-        }
-    }
-);
+        );
 
-let texto = response.data.choices[0].message.content;
-texto = limparTextoIA(texto);
+        const texto = response.data.choices[0].message.content;
 
-
+        // Salvar histórico
         await pool.query(
             "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES ($1, $2, $3)",
             [req.userId, `Plano para ${materia}`, texto]
@@ -347,7 +317,7 @@ texto = limparTextoIA(texto);
         res.json({ plano: texto });
 
     } catch (error) {
-        console.error("Erro Hugging Face:", error.response?.data || error.message);
+        console.error(error.response?.data || error.message);
         res.status(500).json({ erro: "Erro ao gerar plano" });
     }
 });
@@ -392,29 +362,9 @@ app.get("/teste-ia", async (req, res) => {
             }
         );
 
-        let texto = response.data.choices[0].message.content;
-
-// Remove markdown
-texto = texto
-    .replace(/[*#`_~]/g, "")
-    .replace(/---/g, "")
-    .trim();
-
-// Limitar emojis (máximo 2)
-const emojiRegex = /([\u{1F300}-\u{1FAFF}])/gu;
-const emojis = texto.match(emojiRegex);
-
-if (emojis && emojis.length > 2) {
-    let count = 0;
-    texto = texto.replace(emojiRegex, (match) => {
-        count++;
-        return count <= 2 ? match : "";
-    });
-}
-res.json({
-    resposta: texto,
-});
-        
+        res.json({
+            resposta: response.data.choices[0].message.content
+        });
 
     } catch (error) {
         console.error("Erro Hugging Face:", error.response?.data || error.message);
