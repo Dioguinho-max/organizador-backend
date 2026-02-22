@@ -2,7 +2,7 @@
 
 ![Node.js](https://img.shields.io/badge/Node.js-18-green)
 ![Express](https://img.shields.io/badge/Express-4-lightgrey)
-![SQLite](https://img.shields.io/badge/Database-SQLite-blue)
+![SQLite](https://img.shields.io/badge/Database-PostgreSQL-blue)
 ![JWT](https://img.shields.io/badge/Auth-JWT-orange)
 ![Status](https://img.shields.io/badge/Status-Online-brightgreen)
 
@@ -33,7 +33,7 @@ A API é consumida pelo frontend hospedado na Vercel.
 
 - Node.js
 - Express
-- SQLite3
+- PostgreSQL
 - bcrypt
 - jsonwebtoken (JWT)
 - Axios
