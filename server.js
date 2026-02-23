@@ -291,6 +291,7 @@ Responda com plano organizado em tópicos curtos.
 Sem links externos.
 Linguagem simples e prática.
 Gere um plano de estudos LIMPO, sem markdown, sem símbolos decorativos.
+Com máximo de 2000 caracteres.
 `
                     },
                     {
