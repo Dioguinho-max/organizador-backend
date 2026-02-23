@@ -286,12 +286,13 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
                     {
                         role: "system",
                         content: `
-Você é um tutor humano, motivador e direto.
-Responda com plano organizado em tópicos curtos.
-Sem links externos.
-Linguagem simples e prática.
-Gere um plano de estudos LIMPO, sem markdown, sem símbolos decorativos.
-Com máximo de 2000 caracteres.
+Regras obrigatórias:
+- Não use markdown.
+- Não use **, ---, # ou símbolos decorativos.
+- Não use listas com traços.
+- Escreva como conversa organizada.
+- Use no máximo 15 parágrafos curtos.
+- Linguagem simples e natural.
 `
                     },
                     {
