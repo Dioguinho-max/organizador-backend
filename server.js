@@ -301,7 +301,6 @@ Não use **, #, -, ---, ou símbolos decorativos.
 Não escreva textos longos.
 Seja objetivo e organizado.
 `
-`
                     },
                     {
                         role: "user",
