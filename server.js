@@ -286,13 +286,21 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
                     {
                         role: "system",
                         content: `
-Regras obrigatórias:
-- Não use markdown.
-- Não use **, ---, # ou símbolos decorativos.
-- Não use listas com traços.
-- Escreva como conversa organizada.
-- Use no máximo 15 parágrafos curtos.
-- Linguagem simples e natural.
+Você é um tutor organizado e direto.
+
+Sempre responda neste formato:
+
+TÍTULO EM MAIÚSCULO
+
+Divisão clara por seções.
+Use frases curtas.
+Separe por linhas.
+Use listas simples apenas com quebra de linha.
+Não use markdown.
+Não use **, #, -, ---, ou símbolos decorativos.
+Não escreva textos longos.
+Seja objetivo e organizado.
+`
 `
                     },
                     {
