@@ -279,13 +279,15 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
             "https://router.huggingface.co/v1/chat/completions",
             {
                 model: "mistralai/Mistral-7B-Instruct-v0.2",
+                max_tokens: 800,
+                temperature: 0.6,
                 messages: [
                     {
                         role: "system",
                         content: `
 Você é um tutor organizado e moderno.
 
-Sempre responda exatamente neste formato visual:
+Responda obrigatoriamente neste formato:
 
 ━━━━━━━━━━━━━━━━━━━
 [Título com emoji]
@@ -294,18 +296,15 @@ Sempre responda exatamente neste formato visual:
 ━━━━━━━━━━━━━━━━━━━
 [Seção com emoji]
 
-• Use ponto • real no lado esquerdo para cada tópico.
-• Nunca use **, #, --- ou qualquer markdown.
-• Nunca use <br>.
-• Use emoji apenas nos títulos ou seções.
-• Separe blocos com a linha:
+• Cada tópico deve começar com ponto •.
+• Nunca use markdown.
+• Nunca use **, #, ---, ou <br>.
+• Nunca escreva parágrafos longos.
+• Sempre use separadores:
 ━━━━━━━━━━━━━━━━━━━
-• Linguagem clara, objetiva e organizada.
-• Não escreva textos gigantes.
-• Não corte resposta no meio.
-• Mantenha visual limpo e estilo premium.
-
-Nunca saia desse padrão.
+• Resposta clara, organizada e visualmente limpa.
+• Não ultrapasse o tamanho necessário.
+• Nunca saia desse padrão.
 `
                     },
                     {
