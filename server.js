@@ -302,7 +302,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
             "https://router.huggingface.co/v1/chat/completions",
             {
                 model: "mistralai/Mistral-7B-Instruct-v0.2",
-                max_tokens: 300,
+                max_tokens: 600,
                 temperature: 0.6,
                 messages: [
                     {
@@ -326,9 +326,8 @@ Responda obrigatoriamente neste formato:
 • Sempre use separadores:
 ━━━━━━━━━━━━━━━━━━━
 • Resposta clara, organizada e visualmente limpa.
-• Não ultrapasse o tamanho necessário.
+• Responda de forma objetiva, máximo 15 linhas.
 • Nunca saia desse padrão.
-• Sempre use no maximo 2000 caracteres.
 `
                     },
                     {
