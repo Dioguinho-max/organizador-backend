@@ -243,6 +243,29 @@ app.get("/ranking", async (req, res) => {
     res.json(rankingFormatado);
 });
 
+// ===============================
+// FILTRO DE RESPOSTA DA IA
+// ===============================
+async function filtrarRespostaIA(texto) {
+    if (!texto) return "";
+
+    let textoLimpo = texto
+        .replace(/\*\*/g, "")              // remove **
+        .replace(/#/g, "")                 // remove #
+        .replace(/---/g, "")               // remove ---
+        .replace(/<br\s*\/?>/gi, "")       // remove <br>
+        .replace(/\*/g, "")                // remove * solto
+        .replace(/\n{3,}/g, "\n\n")        // evita muitas quebras
+        .trim();
+
+    // Limite de tamanho (evita resposta gigante)
+    if (textoLimpo.length > 4000) {
+        textoLimpo = textoLimpo.slice(0, 4000);
+    }
+
+    return textoLimpo;
+}
+
 //================================
 // LIMITE IA
 // ===============================
@@ -322,14 +345,15 @@ Responda obrigatoriamente neste formato:
         );
 
         const texto = response.data.choices[0].message.content;
+        const textoFiltrado = await filtrarRespostaIA(texto);
 
-        // Salvar histórico
+        // Salvar historico
         await pool.query(
             "INSERT INTO historico_ia (user_id, pergunta, resposta) VALUES ($1, $2, $3)",
-            [req.userId, `Plano para ${materia}`, texto]
+            [req.userId, `Plano para ${materia}`, textoFiltrado]
         );
 
-        res.json({ plano: texto });
+        res.json({ plano: textoFiltrado });
 
     } catch (error) {
         console.error(error.response?.data || error.message);
