@@ -328,6 +328,7 @@ Responda obrigatoriamente neste formato:
 • Resposta clara, organizada e visualmente limpa.
 • Não ultrapasse o tamanho necessário.
 • Nunca saia desse padrão.
+• Sempre use no maximo 2000 caracteres.
 `
                     },
                     {
