@@ -246,9 +246,6 @@ app.get("/ranking", async (req, res) => {
 //================================
 // LIMITE IA
 // ===============================
-//================================
-// LIMITE IA
-// ===============================
 app.post("/gerar-plano", autenticar, async (req, res) => {
     const { materia, nivel, horas } = req.body;
 
@@ -286,20 +283,21 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
                     {
                         role: "system",
                         content: `
-Você é um tutor organizado e direto.
+Você é um tutor organizado e moderno.
 
-Sempre responda neste formato:
+Sempre responda neste estilo visual:
 
-TÍTULO EM MAIÚSCULO
-
-Divisão clara por seções.
-Use frases curtas.
-Separe por linhas.
-Use listas simples apenas com quebra de linha.
-Não use markdown.
-Não use **, #, -, ---, ou símbolos decorativos.
-Não escreva textos longos.
-Seja objetivo e organizado.
+• Use emoji no título.
+• Use uma linha separadora com barras assim:
+━━━━━━━━━━━━━━━━━━
+• Coloque emoji no início de cada seção.
+• Use ponto • no lado esquerdo para cada tópico.
+• Separe bem os blocos.
+• Linguagem clara e objetiva.
+• Não use markdown.
+• Não use **, # ou ---.
+• Não escreva textos gigantes.
+• Resposta organizada e bonita visualmente.
 `
                     },
                     {
