@@ -259,8 +259,8 @@ async function filtrarRespostaIA(texto) {
         .trim();
 
     // Limite de tamanho (evita resposta gigante)
-    if (textoLimpo.length > 8000) {
-        textoLimpo = textoLimpo.slice(0, 8000);
+    if (textoLimpo.length > 10000) {
+        textoLimpo = textoLimpo.slice(0, 10000);
     }
 
     return textoLimpo;
@@ -302,23 +302,26 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
             "https://router.huggingface.co/v1/chat/completions",
             {
                 model: "mistralai/Mistral-7B-Instruct-v0.2",
-                max_tokens: 900,
+                max_tokens: 600,
                 temperature: 0.6,
                 messages: [
                     {
                         role: "system",
                         content: `
-Você é um tutor organizado.
+Você é um tutor organizado e visual.
 
 Crie um plano de estudos com:
-- Exatamente 4 semanas
-- Cada semana com no máximo 4 tópicos curtos
-- Use • no início de cada tópico
+- EXATAMENTE 4 semanas
+- Use emojis nos títulos
 - Use o separador:
 ━━━━━━━━━━━━━━━━━━━
-- Não use markdown
+- Cada semana deve ter no máximo 3 tópicos
+- Cada tópico deve ter no máximo 2 linhas
+- Não detalhar quantidade exata de exercícios
+- Usar • no início de cada tópico
+- Não usar markdown
 
-Seja objetivo e finalize corretamente.
+Seja objetivo, visual e finalize corretamente após a Semana 4.
 `
                     },
                     {
