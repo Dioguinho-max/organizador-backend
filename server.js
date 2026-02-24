@@ -319,15 +319,15 @@ Responda obrigatoriamente neste formato:
 ━━━━━━━━━━━━━━━━━━━
 [Seção com emoji]
 
-• Cada tópico deve começar com ponto •.
-• Nunca use markdown.
-• Nunca use **, #, ---, ou <br>.
-• Nunca escreva parágrafos longos.
-• Sempre use separadores:
+Cada tópico deve começar com ponto •.
+Nunca use markdown.
+Nunca use **, #, ---, ou <br>.
+Nunca escreva parágrafos longos.
+Sempre use separadores:
 ━━━━━━━━━━━━━━━━━━━
-• Resposta clara, organizada e visualmente limpa.
-• Responda de forma objetiva, máximo 15 linhas.
-• Nunca saia desse padrão.
+Resposta clara, organizada e visualmente limpa.
+Responda de forma objetiva, máximo 15 linhas.
+Nunca saia desse padrão.
 `
                     },
                     {
