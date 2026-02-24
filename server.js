@@ -259,8 +259,8 @@ async function filtrarRespostaIA(texto) {
         .trim();
 
     // Limite de tamanho (evita resposta gigante)
-    if (textoLimpo.length > 4000) {
-        textoLimpo = textoLimpo.slice(0, 4000);
+    if (textoLimpo.length > 8000) {
+        textoLimpo = textoLimpo.slice(0, 8000);
     }
 
     return textoLimpo;
@@ -302,32 +302,23 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
             "https://router.huggingface.co/v1/chat/completions",
             {
                 model: "mistralai/Mistral-7B-Instruct-v0.2",
-                max_tokens: 800,
+                max_tokens: 900,
                 temperature: 0.6,
                 messages: [
                     {
                         role: "system",
                         content: `
-Você é um tutor organizado e moderno.
+Você é um tutor organizado.
 
-Responda obrigatoriamente neste formato:
-
+Crie um plano de estudos com:
+- Exatamente 4 semanas
+- Cada semana com no máximo 4 tópicos curtos
+- Use • no início de cada tópico
+- Use o separador:
 ━━━━━━━━━━━━━━━━━━━
-[Título com emoji]
-[Subtítulo opcional]
+- Não use markdown
 
-━━━━━━━━━━━━━━━━━━━
-[Seção com emoji]
-
-Cada tópico deve começar com ponto •.
-Nunca use markdown.
-Nunca use **, #, ---, ou <br>.
-Nunca escreva parágrafos longos.
-Sempre use separadores:
-━━━━━━━━━━━━━━━━━━━
-Resposta clara, organizada e visualmente limpa.
-Responda de forma objetiva, máximo 15 linhas.
-Nunca saia desse padrão.
+Seja objetivo e finalize corretamente.
 `
                     },
                     {
