@@ -302,7 +302,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
             "https://router.huggingface.co/v1/chat/completions",
             {
                 model: "mistralai/Mistral-7B-Instruct-v0.2",
-                max_tokens: 600,
+                max_tokens: 800,
                 temperature: 0.6,
                 messages: [
                     {
