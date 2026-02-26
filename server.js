@@ -4,18 +4,78 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
+// 🌍 GLOBAL
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: {
+        erro: "Muitas requisições. Tente novamente em 15 minutos."
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 🔐 LOGIN
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    skipSuccessfulRequests: true,
+    message: {
+        erro: "Muitas tentativas de login. Tente novamente em 15 minutos."
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 🤖 IA
+const iaLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: {
+        erro: "Muitas gerações de plano. Aguarde 15 minutos."
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+app.set("trust proxy", 1);
+
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: process.env.FRONT_URL,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+}));
+app.use(globalLimiter);
 
 const SECRET = process.env.JWT_SECRET;
 const HF_TOKEN = process.env.HF_TOKEN;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+// 🔐 Validação obrigatória das variáveis críticas
+if (!SECRET) {
+    console.error("❌ JWT_SECRET não definido!");
+    process.exit(1);
+}
+
+if (!HF_TOKEN) {
+    console.error("❌ HF_TOKEN não definido!");
+    process.exit(1);
+}
+
+if (!DATABASE_URL) {
+    console.error("❌ DATABASE_URL não definido!");
+    process.exit(1);
+}
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+    connectionString: DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : false
 });
 
 // ===============================
@@ -106,7 +166,7 @@ app.post("/register", async (req, res) => {
 // ===============================
 // LOGIN
 // ===============================
-app.post("/login", async (req, res) => {
+app.post("/login", loginLimiter, async (req, res) => {
     const { username, password } = req.body;
 
     const result = await pool.query(
@@ -269,7 +329,7 @@ async function filtrarRespostaIA(texto) {
 //================================
 // LIMITE IA
 // ===============================
-app.post("/gerar-plano", autenticar, async (req, res) => {
+app.post("/gerar-plano", iaLimiter, autenticar, async (req, res) => {
     const { materia, nivel, horas } = req.body;
 
     try {
