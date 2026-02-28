@@ -301,7 +301,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         const response = await axios.post(
             "https://router.huggingface.co/v1/chat/completions",
             {
-                model: "mistralai/Mistral-7B-Instruct-v0.3",
+                model: "HuggingFaceH4/zephyr-7b-beta",
                 max_tokens: 700,
                 temperature: 0.6,
                 messages: [
@@ -375,7 +375,7 @@ app.get("/teste-ia", async (req, res) => {
         const response = await axios.post(
             "https://router.huggingface.co/v1/chat/completions",
             {
-                model: "mistralai/Mistral-7B-Instruct-v0.3",
+                model: "HuggingFaceH4/zephyr-7b-beta",
                 messages: [
                     {
                         role: "system",
