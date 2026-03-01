@@ -298,41 +298,40 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         }
 
         // Chamada à IA
-        const prompt = `
-Você é um tutor organizado e visual.
-
-Crie um plano de estudos com:
-- EXATAMENTE 4 semanas
-- Use emojis nos títulos
-- Use o separador:
-━━━━━━━━━━━━━━━━━━━
-- Cada semana deve ter no máximo 3 tópicos
-- Cada tópico deve ter no máximo 2 linhas
-- Não detalhar quantidade exata de exercícios
-- Usar • no início de cada tópico
-- Não usar markdown
-
-Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.
-`;
-
-const response = await axios.post(
-  "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+        const response = await axios.post(
+  "https://router.huggingface.co/v1/chat/completions",
   {
-    inputs: prompt,
-    parameters: {
-      max_new_tokens: 700,
-      temperature: 0.6,
-      return_full_text: false
-    }
+    model: "meta-llama/Meta-Llama-3-8B-Instruct",
+    max_tokens: 700,
+    temperature: 0.6,
+    messages: [
+      {
+        role: "system",
+        content: "Você é um tutor organizado e visual."
+      },
+      {
+        role: "user",
+        content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.
+Regras:
+- EXATAMENTE 4 semanas
+- Use emojis
+- Separador: ━━━━━━━━━━━━━━━━━━━
+- Máximo 3 tópicos por semana
+- Máximo 2 linhas por tópico
+- Usar • no início
+- Não usar markdown`
+      }
+    ]
   },
   {
     headers: {
-      Authorization: `Bearer ${process.env.HF_TOKEN}`
+      Authorization: `Bearer ${process.env.HF_TOKEN}`,
+      "Content-Type": "application/json"
     }
   }
 );
 
-        const texto = response.data[0].generated_text;
+        const texto = response.data.choices[0].message.content;
         const textoFiltrado = await filtrarRespostaIA(texto);
 
         // Salvar historico
@@ -365,33 +364,42 @@ app.get("/historico-ia", autenticar, async (req, res) => {
 // IA
 // ===============================
 app.get("/teste-ia", async (req, res) => {
-    try {
-        const response = await axios.post(
-  "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
-  {
-    inputs: "Crie um plano simples para estudar matemática para iniciantes.",
-    parameters: {
-      max_new_tokens: 300,
-      temperature: 0.6,
-      return_full_text: false
-    }
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${process.env.HF_TOKEN}`
-    }
-  }
-);
+  try {
+    const response = await axios.post(
+      "https://router.huggingface.co/v1/chat/completions",
+      {
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        max_tokens: 300,
+        temperature: 0.6,
+        messages: [
+          {
+            role: "system",
+            content: "Você é um tutor especialista em estudos."
+          },
+          {
+            role: "user",
+            content: "Crie um plano simples para estudar matemática para iniciantes."
+          }
+        ]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HF_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
-res.json({
-  resposta: response.data[0].generated_text
-});
-    } catch (error) {
-        console.error("Erro Hugging Face:", error.response?.data || error.message);
-        res.status(500).json({
-            erro: error.response?.data || error.message
-        });
-    }
+    res.json({
+      resposta: response.data.choices[0].message.content
+    });
+
+  } catch (error) {
+    console.error("Erro Hugging Face:", error.response?.data || error.message);
+    res.status(500).json({
+      erro: error.response?.data || error.message
+    });
+  }
 });
 
 // ===============================
