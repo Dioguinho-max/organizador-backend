@@ -302,7 +302,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
   "https://router.huggingface.co/v1/chat/completions",
   {
     model: "meta-llama/Meta-Llama-3-8B-Instruct",
-    max_tokens: 1500,
+    max_tokens: 750,
     temperature: 0.6,
     messages: [
       {
