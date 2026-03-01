@@ -298,16 +298,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         }
 
         // Chamada à IA
-        const response = await axios.post(
-            "https://router.huggingface.co/v1/chat/completions",
-            {
-                model: "HuggingFaceH4/zephyr-7b-beta",
-                max_tokens: 700,
-                temperature: 0.6,
-                messages: [
-                    {
-                        role: "system",
-                        content: `
+        const prompt = `
 Você é um tutor organizado e visual.
 
 Crie um plano de estudos com:
@@ -321,24 +312,27 @@ Crie um plano de estudos com:
 - Usar • no início de cada tópico
 - Não usar markdown
 
-Seja objetivo, visual e finalize corretamente após a Semana 4.
-`
-                    },
-                    {
-                        role: "user",
-                        content: `Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.`
-                    }
-                ]
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                }
-            }
-        );
+Crie um plano de estudos para ${materia}, nível ${nivel}, estudando ${horas} horas por dia.
+`;
 
-        const texto = response.data.choices[0].message.content;
+const response = await axios.post(
+  "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+  {
+    inputs: prompt,
+    parameters: {
+      max_new_tokens: 700,
+      temperature: 0.6,
+      return_full_text: false
+    }
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${process.env.HF_TOKEN}`
+    }
+  }
+);
+
+        const texto = response.data[0].generated_text;
         const textoFiltrado = await filtrarRespostaIA(texto);
 
         // Salvar historico
@@ -373,32 +367,25 @@ app.get("/historico-ia", autenticar, async (req, res) => {
 app.get("/teste-ia", async (req, res) => {
     try {
         const response = await axios.post(
-            "https://router.huggingface.co/v1/chat/completions",
-            {
-                model: "HuggingFaceH4/zephyr-7b-beta",
-                messages: [
-                    {
-                        role: "system",
-                        content: "Você é um tutor especialista em estudos."
-                    },
-                    {
-                        role: "user",
-                        content: "Crie um plano simples para estudar matemática para iniciantes."
-                    }
-                ]
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                }
-            }
-        );
+  "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+  {
+    inputs: "Crie um plano simples para estudar matemática para iniciantes.",
+    parameters: {
+      max_new_tokens: 300,
+      temperature: 0.6,
+      return_full_text: false
+    }
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${process.env.HF_TOKEN}`
+    }
+  }
+);
 
-        res.json({
-            resposta: response.data.choices[0].message.content
-        });
-
+res.json({
+  resposta: response.data[0].generated_text
+});
     } catch (error) {
         console.error("Erro Hugging Face:", error.response?.data || error.message);
         res.status(500).json({
