@@ -303,7 +303,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
   {
     model: "meta-llama/Meta-Llama-3-8B-Instruct",
     max_tokens: 750,
-    temperature: 0.6,
+    temperature: 0.5,
     messages: [
       {
         role: "system",
@@ -370,7 +370,7 @@ app.get("/teste-ia", async (req, res) => {
       {
         model: "meta-llama/Meta-Llama-3-8B-Instruct",
         max_tokens: 300,
-        temperature: 0.6,
+        temperature: 0.5,
         messages: [
           {
             role: "system",
