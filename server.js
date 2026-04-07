@@ -32,6 +32,11 @@ async function criarTabelas() {
 `);
 
     await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS tarefas (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id),
@@ -127,6 +132,48 @@ app.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: "1h" });
 
     res.json({ token });
+});
+
+// ===============================
+// PERFIL
+// ===============================
+app.get("/perfil", autenticar, async (req, res) => {
+    const result = await pool.query(
+        "SELECT id, username, avatar_url FROM users WHERE id = $1",
+        [req.userId]
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+        return res.status(404).json({ erro: "Usuário não encontrado" });
+    }
+
+    res.json(user);
+});
+
+app.put("/perfil", autenticar, async (req, res) => {
+    const { avatar_url } = req.body;
+
+    if (avatar_url !== null && avatar_url !== undefined) {
+        const isString = typeof avatar_url === "string";
+        const isDataImage = isString && avatar_url.startsWith("data:image/");
+
+        if (avatar_url !== "" && !isDataImage) {
+            return res.status(400).json({ erro: "Avatar inválido" });
+        }
+
+        if (isString && avatar_url.length > 2_000_000) {
+            return res.status(400).json({ erro: "Imagem muito grande" });
+        }
+    }
+
+    await pool.query(
+        "UPDATE users SET avatar_url = $1 WHERE id = $2",
+        [avatar_url || null, req.userId]
+    );
+
+    res.json({ mensagem: "Perfil atualizado com sucesso" });
 });
 
 
