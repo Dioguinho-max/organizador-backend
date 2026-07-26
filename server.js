@@ -348,7 +348,7 @@ app.post("/gerar-plano", autenticar, async (req, res) => {
         const response = await axios.post(
   "https://router.huggingface.co/v1/chat/completions",
   {
-    model: "meta-llama/Meta-Llama-3-8B-Instruct",
+    model: "meta-llama/Llama-3.1-8B-Instruct",
     max_tokens: 775,
     temperature: 0.6,
     messages: [
